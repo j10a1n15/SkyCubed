@@ -31,6 +31,10 @@ class RpgOverlay : Translatable {
     @Comment("", translation = "config.skycubed.overlays.rpg.skyblockLevel.desc")
     var skyblockLevel: Boolean = false
 
+    @ConfigEntry(id = "actualPlayer", translation = "config.skycubed.overlays.rpg.actualPlayer")
+    @Comment("", translation = "config.skycubed.overlays.rpg.actualPlayer.desc")
+    var actualPlayer: Boolean = false
+
     override fun getTranslationKey(): String = "Edit RPG Overlay"
 }
 
