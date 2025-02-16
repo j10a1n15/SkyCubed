@@ -1,9 +1,11 @@
 package tech.thatgravyboat.skycubed.features.overlays
 
+import com.mojang.blaze3d.systems.RenderSystem
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import org.lwjgl.opengl.GL11
 import tech.thatgravyboat.skyblockapi.api.datatype.DataTypes
 import tech.thatgravyboat.skyblockapi.api.datatype.getData
 import tech.thatgravyboat.skyblockapi.api.profile.StatsAPI
@@ -20,6 +22,7 @@ import tech.thatgravyboat.skycubed.utils.DisplayEntityPlayer
 import tech.thatgravyboat.skycubed.utils.blitSpritePercentX
 import tech.thatgravyboat.skycubed.utils.drawScaledString
 import tech.thatgravyboat.skycubed.utils.pushPop
+import java.nio.ByteBuffer
 
 
 private const val WIDTH = 119
@@ -61,18 +64,35 @@ object PlayerRpgOverlay : Overlay {
         val manaUsePercent = (itemStackData?.second?.toFloat() ?: 0f) / StatsAPI.maxMana.toFloat()
 
 
-        graphics.blitSprite(RenderType::guiTextured, MAIN_BACKGROUND, 6, 3, 38, 41)
+        //graphics.blitSprite(RenderType::guiTextured, MAIN_BACKGROUND, 6, 3, 38, 41)
 
         if (OverlaysConfig.rpg.actualPlayer) {
-            graphics.pushPop {
-                graphics.enableScissor(6, 3, 38, 42)
+            RenderSystem.clearStencil(0)
+            RenderSystem.clear(GL11.GL_STENCIL_BUFFER_BIT)
 
-                val emptyArmor = listOf(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY)
-                val entity = DisplayEntityPlayer(McPlayer.skin, emptyArmor)
-                Displays.entity(entity, 28, 31, 30, 20f, 20f).render(graphics, 11, 30)
+            RenderSystem.stencilMask(0xFF)
+            GL11.glEnable(GL11.GL_STENCIL_TEST)
 
-                graphics.disableScissor()
-            }
+            RenderSystem.colorMask(false, false, false, false)
+            RenderSystem.stencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE)
+            RenderSystem.stencilFunc(GL11.GL_ALWAYS, 1, 0xFF)
+
+            graphics.blitSprite(RenderType::guiTextured, MAIN_BACKGROUND, 6, 3, 38, 41)
+
+            val stencilValue = ByteBuffer.allocate(1)
+            GL11.glReadPixels(20, 20, 1, 1, GL11.GL_STENCIL_INDEX, GL11.GL_UNSIGNED_BYTE, stencilValue)
+            println("Stencil value at (20,20): ${stencilValue.get(0)}")
+
+            RenderSystem.colorMask(true, true, true, true)
+            RenderSystem.stencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP)
+            RenderSystem.stencilFunc(GL11.GL_EQUAL, 1, 0xFF)
+            RenderSystem.stencilMask(0x00)  // Prevent further writes to stencil buffer
+
+            val emptyArmor = listOf(ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY)
+            val entity = DisplayEntityPlayer(McPlayer.skin, emptyArmor)
+            Displays.entity(entity, 28, 31, 30, 20f, 20f).render(graphics, 11, 30)
+
+            GL11.glDisable(GL11.GL_STENCIL_TEST)
         } else {
             graphics.blitSprite(RenderType::guiTextured, PERSON, 11, 13, 28, 31)
         }
